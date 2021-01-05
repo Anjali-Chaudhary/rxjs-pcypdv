@@ -1,116 +1,71 @@
-import { Observable, of } from "rxjs";
-import { map } from "rxjs/operators";
-
+import { Observable, Observer } from "rxjs";
 interface Client {
   sendMessage: (message: string) => void;
-
   onMessage: (callback: (message: string, clientName: string) => void) => void;
 }
-
 type RecordMap = { [recordName: string]: Client };
-
 class RecordTracker {
   constructor(private recordMap: RecordMap) {}
-
   public initialize(): void {
-    Object.keys(this.recordMap).forEach(i => {
-      setTimeout(() => {
-        this.sendMsg(this.recordMap[i], i).subscribe({
-          next(res) {
-            if (res === "sent") {
-              this.getReply(this.recordMap[i], i);
-            }
-          },
-          error(error) {
-            delete this.recordMap[i];
-          }
-          // complete() {}
-        });
-        //   .then(res => {
-        //     if (res === "sent") {
-        //       this.getReply(this.recordMap[i], i);
-        //     }
-        //   })
-        //   .catch(res => {
-        //     delete this.recordMap[i];
-        //   });
-      }, 10000);
-    });
+    Object.keys(this.recordMap).forEach(this.sendMessageToClient.bind(this));
   }
-
-  public sendMsg(client: Client, index: string) {
-    const observable = new Observable(observer => {
+  private sendMessageToClient(client: string): void {
+    const recordMap = this.recordMap;
+    const waitTimeInMs = 10000;
+    const getReply = this.getReply.bind(this);
+    setTimeout(() => {
+      this.sendMessage(this.recordMap[client], client).subscribe({
+        next(response: string) {
+          if (response === "message sent") {
+            getReply(recordMap[client], client);
+          }
+        }
+      });
+    }, waitTimeInMs);
+  }
+  public sendMessage(client: Client, index: string) {
+    const observable = new Observable((observer: Observer<string>) => {
       console.log("Message sent to " + index);
-
       try {
         client.sendMessage("ping");
-
-        observer.next("sent");
-      } catch (e) {
-        console.log("Error while sending message to " + index);
-
-        observer.error("Error while sending message to " + index);
-      }
-      //observer.complete();
+        observer.next("message sent");
+      } catch (e) {}
     });
     return observable;
   }
-10
   public getReply(client: Client, index: string) {
+    const recordMap = this.recordMap;
+    const waitTimeInMs = 3000;
     setTimeout(() => {
       client.onMessage((message: string, client: string) => {
-        console.log("Message received from " + index + " = " + message);
-
+        console.log("Reply from " + index + " = " + message);
         if (message !== "pong") {
-          console.log("Removing the client " + index);
-
-          delete this.recordMap[index];
+          console.log("Removing " + index);
+          delete recordMap[index];
         }
       });
-    }, 3000);
-  }
-
-  public getRecordMap(): RecordMap {
-    return { ...this.recordMap };
+    }, waitTimeInMs);
   }
 }
-
-//Assuming the system sends null if the user doesn't responds in 3 seconds
-
+//Assuming, system will send null if the user doesn't responds in 3 seconds
 let clients: RecordMap = {
-  Cl1: {
+  Client1: {
     sendMessage(message: string) {},
-
     onMessage(messageHandler: Function) {
-      messageHandler("pong", "Cl1");
+      messageHandler("pong", "Client1");
     }
   },
-
-  Cl2: {
-    sendMessage(message: string) {
-      //throw "Message bus not found";
-    },
-
+  Client2: {
+    sendMessage(message: string) {},
     onMessage(messageHandler: Function) {
-      messageHandler(null, "Cl2");
+      messageHandler(null, "Client2");
     }
   },
-
-  Cl3: {
+  Client3: {
     sendMessage(message: string) {},
-
     onMessage(messageHandler: Function) {
-      messageHandler(null, "Cl3");
-    }
-  },
-
-  Cl4: {
-    sendMessage(message: string) {},
-
-    onMessage(messageHandler: Function) {
-      messageHandler("hello", "Cl4");
+      messageHandler("hey", "Client3");
     }
   }
 };
-
 new RecordTracker(clients).initialize();
