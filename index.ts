@@ -1,14 +1,17 @@
 import { Observable, Observer } from "rxjs";
+
 interface Client {
   sendMessage: (message: string) => void;
   onMessage: (callback: (message: string, clientName: string) => void) => void;
 }
 type RecordMap = { [recordName: string]: Client };
+
 class RecordTracker {
   constructor(private recordMap: RecordMap) {}
   public initialize(): void {
     Object.keys(this.recordMap).forEach(this.sendMessageToClient.bind(this));
   }
+
   private sendMessageToClient(client: string): void {
     const recordMap = this.recordMap;
     const waitTimeInMs = 10000;
@@ -23,7 +26,8 @@ class RecordTracker {
       });
     }, waitTimeInMs);
   }
-  public sendMessage(client: Client, index: string) {
+
+  private sendMessage(client: Client, index: string) {
     const observable = new Observable((observer: Observer<string>) => {
       console.log("Message sent to " + index);
       try {
@@ -33,7 +37,8 @@ class RecordTracker {
     });
     return observable;
   }
-  public getReply(client: Client, index: string) {
+
+  private getReply(client: Client, index: string) {
     const recordMap = this.recordMap;
     const waitTimeInMs = 3000;
     setTimeout(() => {
@@ -47,6 +52,7 @@ class RecordTracker {
     }, waitTimeInMs);
   }
 }
+
 //Assuming, system will send null if the user doesn't responds in 3 seconds
 let clients: RecordMap = {
   Client1: {
